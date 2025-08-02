@@ -293,6 +293,13 @@ class SecureSearchTestClient:
         
         self.console.print(table)
     
+    def get_debug_info(self) -> Dict:
+        """Get debug information from server"""
+        if not self.client_id:
+            raise ValueError("Client not initialized. Call initialize() first.")
+        
+        return self._make_request("GET", f"/debug/client/{self.client_id}")
+    
     def print_stats(self):
         """Print client statistics"""
         if not self.client_id:
@@ -311,6 +318,16 @@ class SecureSearchTestClient:
             self.console.print(f"Max Embeddings Allowed: {stats['max_embeddings_allowed']:,}")
             self.console.print(f"Last Active: {stats['last_active_at']}")
             self.console.print(f"Status: {'🟢 Active' if stats['is_active'] else '🔴 Inactive'}")
+            
+            # Also print debug info
+            debug_info = self.get_debug_info()
+            self.console.print(f"\n[bold yellow]🔍 Debug Information[/bold yellow]")
+            self.console.print(f"Service Embeddings: {debug_info['total_embeddings']}")
+            self.console.print(f"LSH Buckets: {debug_info['total_lsh_buckets']}")
+            self.console.print(f"Has HE Context: {debug_info['has_he_context']}")
+            self.console.print(f"Has LSH Config: {debug_info['has_lsh_config']}")
+            if debug_info['sample_lsh_buckets']:
+                self.console.print(f"Sample LSH Buckets: {debug_info['sample_lsh_buckets']}")
             
         except Exception as e:
             self.console.print(f"[red]❌ Failed to get stats: {e}[/red]")

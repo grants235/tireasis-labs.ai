@@ -327,6 +327,53 @@ class SecureSearchService:
             "has_lsh_config": client_id in self.lsh_service.client_configs
         }
     
+    def load_client_data_from_db(self, client_id: str, db_session):
+        """Load client data from database into memory"""
+        from ..models.embedding import Embedding
+        from ..models.lsh import LSHHash
+        from ..models.client import Client
+        import uuid as uuid_module
+        
+        # Convert string to UUID for database query
+        client_uuid = uuid_module.UUID(client_id)
+        
+        # Initialize client data structures if not exists
+        if client_id not in self.client_embeddings:
+            self.client_embeddings[client_id] = []
+        if client_id not in self.client_lsh_hashes:
+            self.client_lsh_hashes[client_id] = {}
+        
+        # Load embeddings
+        embeddings = db_session.query(Embedding).filter(
+            Embedding.client_id == client_uuid,
+            Embedding.is_deleted == False
+        ).all()
+        
+        # Clear existing in-memory data
+        self.client_embeddings[client_id] = []
+        self.client_lsh_hashes[client_id] = {}
+        
+        # Load embeddings into memory
+        for embedding in embeddings:
+            # Convert encrypted vector back to base64 string
+            encrypted_vector_b64 = base64.b64encode(embedding.encrypted_vector).decode()
+            self.client_embeddings[client_id].append((embedding.embedding_id, encrypted_vector_b64))
+        
+        # Load LSH hashes
+        lsh_hashes = db_session.query(LSHHash).filter(
+            LSHHash.client_id == client_uuid
+        ).all()
+        
+        client_lsh_data = self.client_lsh_hashes[client_id]
+        for lsh_hash in lsh_hashes:
+            key = (lsh_hash.table_index, lsh_hash.hash_value)
+            if key not in client_lsh_data:
+                client_lsh_data[key] = set()
+            client_lsh_data[key].add(lsh_hash.embedding_id)
+        
+        logger.info(f"Loaded {len(embeddings)} embeddings and {len(lsh_hashes)} LSH hashes for client {client_id}")
+        return len(embeddings), len(lsh_hashes)
+    
     def clear_client_data(self, client_id: str):
         """Clear all data for a client"""
         self.client_embeddings.pop(client_id, None)

@@ -6,6 +6,7 @@ import uuid
 import time
 import base64
 import hashlib
+import logging
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from ..deps.auth import verify_api_key
 from ...services.secure_search_service import secure_search_service
 
 router = APIRouter(tags=["secure-search"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/initialize", response_model=InitResponse)
@@ -144,6 +146,9 @@ async def add_embedding(
             )
             db.add(db_lsh_hash)
         
+        # Update client statistics
+        client.total_embeddings += 1
+        
         db.commit()
         
         # Get index position
@@ -180,9 +185,37 @@ async def search_embeddings(
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
         
+        # Load client data from database if not in memory
+        client_id_str = str(search_request.client_id)
+        if (client_id_str not in secure_search_service.client_embeddings or 
+            len(secure_search_service.client_embeddings[client_id_str]) == 0):
+            
+            # Also need to restore LSH config and HE context
+            lsh_config = db.query(LSHConfig).filter(LSHConfig.client_id == search_request.client_id).first()
+            if lsh_config:
+                # Restore LSH configuration
+                from ...services.lsh_search import LSHConfig as LSHConfigClass
+                lsh_config_obj = LSHConfigClass(
+                    num_tables=lsh_config.num_tables,
+                    hash_size=lsh_config.hash_size,
+                    embedding_dim=client.embedding_dim,
+                    random_seed=42  # This should match what was used during initialization
+                )
+                secure_search_service.lsh_service.client_configs[client_id_str] = lsh_config_obj
+                
+                # Restore random planes
+                import pickle
+                random_planes = pickle.loads(lsh_config.random_planes)
+                secure_search_service.lsh_service.cache_random_planes(client_id_str, random_planes)
+            
+            # Load from database
+            embedding_count, lsh_count = secure_search_service.load_client_data_from_db(client_id_str, db)
+            if embedding_count > 0:
+                logger.info(f"Loaded {embedding_count} embeddings and {lsh_count} LSH hashes from database for client {client_id_str}")
+        
         # Perform secure search using service
         results, stats = secure_search_service.search_embeddings(
-            client_id=str(search_request.client_id),
+            client_id=client_id_str,
             encrypted_query=search_request.encrypted_query,
             lsh_hashes=search_request.lsh_hashes,
             top_k=search_request.top_k,
