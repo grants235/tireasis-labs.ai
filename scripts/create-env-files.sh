@@ -3,6 +3,9 @@ set -e
 
 echo "📝 Creating environment files..."
 
+# Ensure directories have correct permissions
+sudo chown -R $USER:$USER /opt/secure-search
+
 # Create db-server .env file
 cat > /opt/secure-search/db-server/.env << 'EOF'
 POSTGRES_DB=secure_search_prod
