@@ -50,6 +50,20 @@ def test_lsh_consistency():
             text2, vec2 = vectors[j]
             similarity = np.dot(vec1, vec2)
             print(f"'{text1[:20]}...' vs '{text2[:20]}...': {similarity:.3f}")
+    
+    # Test hash overlap probability
+    print("\nTesting hash overlaps:")
+    text1 = "Machine learning algorithms can automatically learn patterns from large datasets"
+    text2 = "artificial intelligence and machine learning" 
+    
+    vec1 = client._text_to_vector(text1)
+    vec2 = client._text_to_vector(text2)
+    hashes1 = client._compute_lsh_hashes(vec1)
+    hashes2 = client._compute_lsh_hashes(vec2)
+    
+    overlaps = sum(1 for h1, h2 in zip(hashes1, hashes2) if h1 == h2)
+    print(f"Hash overlaps: {overlaps}/20")
+    print(f"Vector similarity: {np.dot(vec1, vec2):.3f}")
 
 if __name__ == "__main__":
     test_lsh_consistency()

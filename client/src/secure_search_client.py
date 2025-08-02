@@ -31,7 +31,7 @@ class SecureSearchTestClient:
         # LSH parameters (must match server configuration)
         self.lsh_config = {
             "num_tables": 20,
-            "hash_size": 16,
+            "hash_size": 8,  # Reduced from 16 to 8 for higher collision probability
             "num_candidates": 100
         }
         
