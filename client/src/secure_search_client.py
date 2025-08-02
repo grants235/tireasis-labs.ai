@@ -115,31 +115,45 @@ class SecureSearchTestClient:
             hash_value = sum(bit * (2 ** i) for i, bit in enumerate(hash_bits))
             hashes.append(hash_value)
         
+        # Debug logging
+        if len(hashes) > 0:
+            print(f"DEBUG LSH: First 5 hashes = {hashes[:5]}, vector norm = {np.linalg.norm(vector):.3f}")
+        
         return hashes
     
     def _text_to_vector(self, text: str) -> np.ndarray:
         """
-        Convert text to a mock embedding vector
+        Convert text to a mock embedding vector with realistic semantic similarity
         In production, this would use a real embedding model like sentence-transformers
         """
-        # Create a deterministic but pseudo-random embedding based on text
-        # This simulates what a real embedding model would produce
-        hash_obj = hashlib.sha256(text.encode())
-        seed = int(hash_obj.hexdigest()[:8], 16)
+        # Start with zeros 
+        vector = np.zeros(self.embedding_dim)
         
-        np.random.seed(seed)
-        vector = np.random.randn(self.embedding_dim)
-        
-        # Add some semantic similarity by incorporating word hashes
+        # Process words to create semantic similarity
         words = text.lower().split()
+        word_count = len(words)
+        
         for word in words:
+            # Create deterministic word vector
             word_hash = int(hashlib.md5(word.encode()).hexdigest()[:8], 16)
             np.random.seed(word_hash)
-            word_vector = np.random.randn(self.embedding_dim) * 0.1
-            vector += word_vector
+            word_vector = np.random.randn(self.embedding_dim)
+            
+            # Add word vector with high weight to create strong semantic signals
+            vector += word_vector * 0.8
         
-        # Normalize
-        return vector / np.linalg.norm(vector)
+        # Add small amount of text-specific randomness to make vectors unique
+        text_hash = int(hashlib.sha256(text.encode()).hexdigest()[:8], 16)
+        np.random.seed(text_hash)
+        text_noise = np.random.randn(self.embedding_dim) * 0.1
+        vector += text_noise
+        
+        # Normalize to unit length
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector = vector / norm
+        
+        return vector
     
     def initialize(self) -> Dict:
         """Initialize client with server - establish HE context"""
