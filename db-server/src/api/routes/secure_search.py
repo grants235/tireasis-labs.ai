@@ -234,3 +234,25 @@ async def search_embeddings(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Search failed: {str(e)}")
+
+
+@router.get("/debug/client/{client_id}")
+async def debug_client_data(
+    client_id: uuid.UUID,
+    api_key: str = Depends(verify_api_key)
+):
+    """Debug endpoint to check client LSH data"""
+    client_id_str = str(client_id)
+    
+    # Get data from secure search service
+    client_embeddings = secure_search_service.client_embeddings.get(client_id_str, [])
+    client_lsh_hashes = secure_search_service.client_lsh_hashes.get(client_id_str, {})
+    
+    return {
+        "client_id": client_id_str,
+        "total_embeddings": len(client_embeddings),
+        "total_lsh_buckets": len(client_lsh_hashes),
+        "sample_lsh_buckets": dict(list(client_lsh_hashes.items())[:5]),
+        "has_he_context": secure_search_service.he_service.get_cached_context(client_id_str) is not None,
+        "has_lsh_config": client_id_str in secure_search_service.lsh_service.client_configs
+    }

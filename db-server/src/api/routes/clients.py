@@ -103,8 +103,7 @@ async def get_client_stats(
         "max_embeddings_allowed": client.max_embeddings_allowed,
         "last_active_at": client.last_active_at.isoformat() if client.last_active_at else None,
         "is_active": client.is_active,
-        "created_at": client.created_at.isoformat(),
-        "updated_at": client.updated_at.isoformat()
+        "created_at": client.created_at.isoformat() if client.created_at else None
     }
 
 
