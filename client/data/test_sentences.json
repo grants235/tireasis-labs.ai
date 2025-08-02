@@ -1,0 +1,152 @@
+[
+  {
+    "id": "tech_001",
+    "text": "Machine learning algorithms can automatically learn patterns from large datasets without explicit programming.",
+    "category": "technology",
+    "topic": "machine_learning"
+  },
+  {
+    "id": "tech_002", 
+    "text": "Deep neural networks have revolutionized computer vision and natural language processing tasks.",
+    "category": "technology",
+    "topic": "deep_learning"
+  },
+  {
+    "id": "tech_003",
+    "text": "Artificial intelligence systems are becoming increasingly sophisticated and capable of complex reasoning.",
+    "category": "technology", 
+    "topic": "artificial_intelligence"
+  },
+  {
+    "id": "tech_004",
+    "text": "Homomorphic encryption allows computations on encrypted data without decrypting it first.",
+    "category": "technology",
+    "topic": "cryptography"
+  },
+  {
+    "id": "tech_005",
+    "text": "Blockchain technology provides a decentralized and immutable ledger for digital transactions.",
+    "category": "technology",
+    "topic": "blockchain"
+  },
+  {
+    "id": "sci_001",
+    "text": "The human brain contains approximately 86 billion neurons connected by trillions of synapses.",
+    "category": "science",
+    "topic": "neuroscience"
+  },
+  {
+    "id": "sci_002",
+    "text": "DNA sequencing has revealed the genetic basis of many diseases and evolutionary relationships.",
+    "category": "science", 
+    "topic": "genetics"
+  },
+  {
+    "id": "sci_003",
+    "text": "Climate change is caused by increased greenhouse gas emissions from human activities.",
+    "category": "science",
+    "topic": "climate"
+  },
+  {
+    "id": "sci_004",
+    "text": "Quantum mechanics describes the behavior of matter and energy at the atomic and subatomic level.",
+    "category": "science",
+    "topic": "physics"
+  },
+  {
+    "id": "sci_005",
+    "text": "CRISPR gene editing technology allows precise modifications to DNA sequences in living cells.",
+    "category": "science",
+    "topic": "biotechnology"
+  },
+  {
+    "id": "bus_001",
+    "text": "Successful startups often focus on solving real customer problems with innovative solutions.",
+    "category": "business",
+    "topic": "entrepreneurship"
+  },
+  {
+    "id": "bus_002",
+    "text": "Supply chain management involves coordinating the flow of goods from suppliers to customers.",
+    "category": "business",
+    "topic": "operations"
+  },
+  {
+    "id": "bus_003", 
+    "text": "Digital marketing strategies leverage social media and online platforms to reach target audiences.",
+    "category": "business",
+    "topic": "marketing"
+  },
+  {
+    "id": "bus_004",
+    "text": "Financial planning requires careful analysis of cash flow, investments, and risk management.",
+    "category": "business",
+    "topic": "finance"
+  },
+  {
+    "id": "bus_005",
+    "text": "Corporate sustainability initiatives focus on environmental responsibility and social impact.",
+    "category": "business",
+    "topic": "sustainability"
+  },
+  {
+    "id": "health_001",
+    "text": "Regular exercise and a balanced diet are essential for maintaining good physical health.",
+    "category": "health",
+    "topic": "wellness"
+  },
+  {
+    "id": "health_002",
+    "text": "Mental health awareness has increased significantly in recent years across all age groups.",
+    "category": "health",
+    "topic": "mental_health"
+  },
+  {
+    "id": "health_003",
+    "text": "Vaccines have been one of the most effective public health interventions in human history.",
+    "category": "health",
+    "topic": "immunization"
+  },
+  {
+    "id": "health_004",
+    "text": "Telemedicine allows patients to consult with healthcare providers remotely using digital technology.",
+    "category": "health",
+    "topic": "digital_health"
+  },
+  {
+    "id": "health_005",
+    "text": "Personalized medicine uses genetic information to tailor treatments to individual patients.",
+    "category": "health",
+    "topic": "precision_medicine"
+  },
+  {
+    "id": "edu_001",
+    "text": "Online learning platforms have made education more accessible to students worldwide.",
+    "category": "education",
+    "topic": "e_learning"
+  },
+  {
+    "id": "edu_002",
+    "text": "Critical thinking skills are essential for analyzing information and making informed decisions.",
+    "category": "education",
+    "topic": "cognitive_skills"
+  },
+  {
+    "id": "edu_003",
+    "text": "STEM education emphasizes science, technology, engineering, and mathematics to prepare students for modern careers.",
+    "category": "education",
+    "topic": "stem"
+  },
+  {
+    "id": "edu_004",
+    "text": "Collaborative learning environments encourage students to work together and share knowledge.",
+    "category": "education",
+    "topic": "pedagogy"
+  },
+  {
+    "id": "edu_005",
+    "text": "Lifelong learning is becoming increasingly important in rapidly changing job markets.",
+    "category": "education",
+    "topic": "continuous_learning"
+  }
+]

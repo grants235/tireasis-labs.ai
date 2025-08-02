@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Search Database Schema</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #4a9eff;
+            margin-bottom: 40px;
+        }
+        .schema-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .table-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .table-card:hover {
+            border-color: #4a9eff;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .table-header {
+            background: #252525;
+            padding: 15px;
+            border-bottom: 2px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4a9eff;
+        }
+        .table-type {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .type-core {
+            background: #1e3a5f;
+            color: #7fb3ff;
+        }
+        .type-index {
+            background: #3f1e5f;
+            color: #b37fff;
+        }
+        .type-log {
+            background: #1e5f3f;
+            color: #7fffb3;
+        }
+        .type-cache {
+            background: #5f3f1e;
+            color: #ffb37f;
+        }
+        .columns {
+            padding: 15px;
+        }
+        .column {
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .column-name {
+            font-weight: 500;
+            color: #e0e0e0;
+            margin-right: 8px;
+        }
+        .column-type {
+            color: #888;
+            font-size: 12px;
+        }
+        .primary-key {
+            color: #ffd700;
+            margin-right: 5px;
+        }
+        .foreign-key {
+            color: #87ceeb;
+            margin-right: 5px;
+        }
+        .index-marker {
+            color: #98fb98;
+            margin-left: 5px;
+        }
+        .relationships {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+        }
+        .relationship {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #252525;
+            border-radius: 6px;
+        }
+        .rel-from, .rel-to {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .rel-from {
+            background: #1e3a5f;
+            color: #7fb3ff;
+        }
+        .rel-to {
+            background: #3f1e5f;
+            color: #b37fff;
+        }
+        .rel-arrow {
+            margin: 0 20px;
+            color: #4a9eff;
+            font-size: 20px;
+        }
+        .rel-type {
+            margin-left: 20px;
+            color: #888;
+            font-style: italic;
+        }
+        .info-section {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .info-item {
+            background: #252525;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .info-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #4a9eff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        code {
+            background: #252525;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+        }
+        .note {
+            background: #1e3a5f;
+            border-left: 4px solid #4a9eff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Secure Similarity Search Database Schema</h1>
+        
+        <div class="info-section">
+            <h2 style="color: #4a9eff; margin-top: 0;">Schema Overview</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Tables</div>
+                    <div class="info-value">12 Tables</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Storage Engine</div>
+                    <div class="info-value">PostgreSQL</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Primary Focus</div>
+                    <div class="info-value">Security & Performance</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Key Features</div>
+                    <div class="info-value">LSH Index + HE Storage</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="relationships">
+            <h2 style="color: #4a9eff; margin-top: 0;">Key Relationships</h2>
+            <div class="relationship">
+                <span class="rel-from">clients</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-to">embeddings</span>
+                <span class="rel-type">One client owns many embeddings</span>
+            </div>
+            <div class="relationship">
+                <span class="rel-from">embeddings</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-to">lsh_hashes</span>
+                <span class="rel-type">Each embedding has 20 LSH hash entries</span>
+            </div>
+            <div class="relationship">
+                <span class="rel-from">embeddings</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-to">embedding_metadata</span>
+                <span class="rel-type">One-to-one metadata storage</span>
+            </div>
+            <div class="relationship">
+                <span class="rel-from">clients</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-to">search_requests</span>
+                <span class="rel-type">Search operations logging</span>
+            </div>
+        </div>
+        
+        <h2 style="color: #4a9eff; text-align: center; margin: 40px 0;">Core Tables</h2>
+        
+        <div class="schema-container">
+            <!-- Clients Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">clients</span>
+                    <span class="table-type type-core">Core</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="primary-key">🔑</span>
+                        <span class="column-name">client_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">client_name</span>
+                        <span class="column-type">VARCHAR(255)</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">api_key_hash</span>
+                        <span class="column-type">VARCHAR(255)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">he_context_public_key</span>
+                        <span class="column-type">BYTEA</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">embedding_dim</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">total_embeddings</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">total_searches</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Embeddings Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">embeddings</span>
+                    <span class="table-type type-core">Core</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="primary-key">🔑</span>
+                        <span class="column-name">embedding_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">client_id</span>
+                        <span class="column-type">UUID</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">external_id</span>
+                        <span class="column-type">VARCHAR(255)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">encrypted_vector</span>
+                        <span class="column-type">BYTEA</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">vector_size_bytes</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">created_at</span>
+                        <span class="column-type">TIMESTAMPTZ</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">is_deleted</span>
+                        <span class="column-type">BOOLEAN</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LSH Hashes Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">lsh_hashes</span>
+                    <span class="table-type type-index">Index</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">client_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">embedding_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">table_index</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">hash_value</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="note" style="margin-top: 10px; font-size: 13px;">
+                        Composite PK: (client_id, table_index, hash_value, embedding_id)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metadata Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">embedding_metadata</span>
+                    <span class="table-type type-core">Core</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="primary-key">🔑</span>
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">embedding_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">metadata</span>
+                        <span class="column-type">JSONB</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">text_content</span>
+                        <span class="column-type">TEXT (generated)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">category</span>
+                        <span class="column-type">VARCHAR(100) (generated)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">search_vector</span>
+                        <span class="column-type">tsvector (generated)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search Requests Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">search_requests</span>
+                    <span class="table-type type-log">Log</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="primary-key">🔑</span>
+                        <span class="column-name">search_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">client_id</span>
+                        <span class="column-type">UUID</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">encrypted_query</span>
+                        <span class="column-type">BYTEA</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">lsh_hashes</span>
+                        <span class="column-type">INTEGER[]</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">candidates_checked</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">total_time_ms</span>
+                        <span class="column-type">NUMERIC(10,2)</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">created_at</span>
+                        <span class="column-type">TIMESTAMPTZ</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cache Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-name">search_cache</span>
+                    <span class="table-type type-cache">Cache</span>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <span class="primary-key">🔑</span>
+                        <span class="column-name">cache_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="foreign-key">🔗</span>
+                        <span class="column-name">client_id</span>
+                        <span class="column-type">UUID</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">query_hash</span>
+                        <span class="column-type">VARCHAR(64)</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">cached_results</span>
+                        <span class="column-type">JSONB</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">expires_at</span>
+                        <span class="column-type">TIMESTAMPTZ</span>
+                        <span class="index-marker">📍</span>
+                    </div>
+                    <div class="column">
+                        <span class="column-name">hit_count</span>
+                        <span class="column-type">INTEGER</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2 style="color: #4a9eff; margin-top: 0;">Performance Optimizations</h2>
+            <ul style="line-height: 1.8;">
+                <li><strong>LSH Lookup Index:</strong> <code>idx_lsh_lookup</code> on (client_id, table_index, hash_value) for O(1) candidate retrieval</li>
+                <li><strong>Materialized View:</strong> <code>lsh_bucket_sizes</code> pre-computes bucket statistics for load balancing</li>
+                <li><strong>Partial Indexes:</strong> Exclude deleted embeddings from active queries</li>
+                <li><strong>JSONB Indexes:</strong> GIN indexes on metadata for flexible querying</li>
+                <li><strong>Full-Text Search:</strong> tsvector index on text content for semantic search</li>
+                <li><strong>Time-based Partitioning:</strong> Can partition <code>search_requests</code> by month for better performance</li>
+            </ul>
+        </div>
+        
+        <div class="info-section" style="background: #1e3a5f;">
+            <h2 style="color: #7fb3ff; margin-top: 0;">Security Features</h2>
+            <ul style="line-height: 1.8;">
+                <li><strong>Encrypted Storage:</strong> All embeddings stored as encrypted BYTEA blobs</li>
+                <li><strong>API Key Hashing:</strong> Client API keys stored as hashes, never plaintext</li>
+                <li><strong>Audit Trail:</strong> Complete logging of all operations</li>
+                <li><strong>Row-Level Security:</strong> Can enable RLS for multi-tenant isolation</li>
+                <li><strong>Soft Deletes:</strong> Embeddings marked as deleted but retained for audit</li>
+                <li><strong>Client Isolation:</strong> All queries filtered by client_id</li>
+            </ul>
+        </div>
+        
+        <div class="info-section">
+            <h2 style="color: #4a9eff; margin-top: 0;">Key Design Decisions</h2>
+            <ul style="line-height: 1.8;">
+                <li><strong>UUID Primary Keys:</strong> Globally unique, no information leakage</li>
+                <li><strong>BYTEA for Encryption:</strong> Efficient binary storage for encrypted vectors</li>
+                <li><strong>Separate Metadata:</strong> Allows querying without decrypting embeddings</li>
+                <li><strong>LSH as Separate Table:</strong> Optimizes for range queries and updates</li>
+                <li><strong>JSONB for Flexibility:</strong> Schema-less metadata storage</li>
+                <li><strong>Generated Columns:</strong> Auto-extract common fields from JSON</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
