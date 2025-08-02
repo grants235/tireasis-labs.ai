@@ -1,0 +1,194 @@
+name: Deploy to Azure VM (Bare Metal)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'db-server/**'
+      - 'proxy-server/**'
+      - '.github/workflows/deploy-to-azure-vm.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/azure_vm_key
+        chmod 600 ~/.ssh/azure_vm_key
+        ssh-keyscan -H $(az vm show -d --resource-group ${{ secrets.VM_RESOURCE_GROUP }} --name ${{ secrets.VM_NAME }} --query publicIps --output tsv) >> ~/.ssh/known_hosts
+
+    - name: Deploy application to VM
+      env:
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        DB_SERVER_API_KEY: ${{ secrets.DB_SERVER_API_KEY }}
+        PROXY_API_KEY: ${{ secrets.PROXY_API_KEY }}
+        VM_IP: $(az vm show -d --resource-group ${{ secrets.VM_RESOURCE_GROUP }} --name ${{ secrets.VM_NAME }} --query publicIps --output tsv)
+      run: |
+        # Get VM IP
+        VM_IP=$(az vm show -d --resource-group ${{ secrets.VM_RESOURCE_GROUP }} --name ${{ secrets.VM_NAME }} --query publicIps --output tsv)
+        
+        # Copy application files to VM
+        echo "📁 Copying application files..."
+        scp -i ~/.ssh/azure_vm_key -r db-server ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
+        scp -i ~/.ssh/azure_vm_key -r proxy-server ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
+        
+        # Copy deployment scripts
+        scp -i ~/.ssh/azure_vm_key scripts/vm-setup.sh ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
+        scp -i ~/.ssh/azure_vm_key scripts/systemd/* ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
+        
+        # Execute deployment on VM
+        ssh -i ~/.ssh/azure_vm_key ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP << 'ENDSSH'
+          set -e
+          
+          # Only install packages if first deployment
+          if [ ! -d "/opt/secure-search" ]; then
+            echo "🔧 First deployment - installing system packages..."
+            sudo apt update
+            sudo apt install -y python3 python3-pip python3-venv postgresql postgresql-contrib nginx
+            
+            # Setup application directory
+            sudo mkdir -p /opt/secure-search
+            sudo chown $USER:$USER /opt/secure-search
+          else
+            echo "🚀 Fast update - skipping system setup..."
+          fi
+          
+          # Copy application files (always update code)
+          echo "📁 Updating application files..."
+          cp -r /tmp/db-server /opt/secure-search/
+          cp -r /tmp/proxy-server /opt/secure-search/
+          
+          # Setup/update Python environment for db-server
+          cd /opt/secure-search/db-server
+          if [ ! -d "venv" ]; then
+            echo "🐍 Creating Python venv for db-server..."
+            python3 -m venv venv
+          fi
+          
+          # Only reinstall packages if requirements changed
+          if [ ! -f "venv/.requirements_hash" ] || ! echo "$(md5sum requirements.txt)" | cmp -s - venv/.requirements_hash; then
+            echo "📦 Installing/updating db-server packages..."
+            source venv/bin/activate
+            pip install -r requirements.txt
+            echo "$(md5sum requirements.txt)" > venv/.requirements_hash
+            deactivate
+          else
+            echo "⚡ Skipping db-server packages (unchanged)"
+          fi
+          
+          # Setup/update Python environment for proxy-server
+          cd /opt/secure-search/proxy-server
+          if [ ! -d "venv" ]; then
+            echo "🐍 Creating Python venv for proxy-server..."
+            python3 -m venv venv
+          fi
+          
+          # Only reinstall packages if requirements changed
+          if [ ! -f "venv/.requirements_hash" ] || ! echo "$(md5sum requirements.txt)" | cmp -s - venv/.requirements_hash; then
+            echo "📦 Installing/updating proxy-server packages..."
+            source venv/bin/activate
+            pip install -r requirements.txt
+            echo "$(md5sum requirements.txt)" > venv/.requirements_hash
+            deactivate
+          else
+            echo "⚡ Skipping proxy-server packages (unchanged)"
+          fi
+          
+          # Setup PostgreSQL
+          sudo systemctl start postgresql
+          sudo systemctl enable postgresql
+          sudo -u postgres psql << EOF
+            CREATE DATABASE IF NOT EXISTS secure_search_prod;
+            CREATE USER IF NOT EXISTS secure_user WITH PASSWORD '$POSTGRES_PASSWORD';
+            GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;
+            ALTER USER secure_user CREATEDB;
+          EOF
+          
+          # Create environment files
+          cat > /opt/secure-search/db-server/.env << EOF
+            POSTGRES_DB=secure_search_prod
+            POSTGRES_USER=secure_user
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            POSTGRES_HOST=localhost
+            POSTGRES_PORT=5432
+            DB_SERVER_API_KEY=$DB_SERVER_API_KEY
+            DB_SERVER_PORT=8001
+            ENVIRONMENT=production
+          EOF
+          
+          cat > /opt/secure-search/proxy-server/.env << EOF
+            PROXY_API_KEY=$PROXY_API_KEY
+            PROXY_SERVER_PORT=8002
+            ENVIRONMENT=production
+          EOF
+          
+          # Install systemd services
+          sudo cp /tmp/secure-search-db.service /etc/systemd/system/
+          sudo cp /tmp/secure-search-proxy.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
+          # Enable and start services
+          sudo systemctl enable secure-search-db
+          sudo systemctl enable secure-search-proxy
+          sudo systemctl restart secure-search-db
+          sudo systemctl restart secure-search-proxy
+          
+          # Setup nginx reverse proxy (optional)
+          sudo tee /etc/nginx/sites-available/secure-search << 'NGINXEOF'
+            server {
+                listen 80;
+                server_name _;
+                
+                location /api/ {
+                    proxy_pass http://localhost:8001/;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+                
+                location /proxy/ {
+                    proxy_pass http://localhost:8002/;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+                
+                location /health {
+                    return 200 'OK';
+                    add_header Content-Type text/plain;
+                }
+            }
+          NGINXEOF
+          
+          sudo ln -sf /etc/nginx/sites-available/secure-search /etc/nginx/sites-enabled/
+          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo nginx -t && sudo systemctl reload nginx
+          
+          echo "🎉 Deployment completed!"
+          echo "📊 Service status:"
+          sudo systemctl status secure-search-db --no-pager
+          sudo systemctl status secure-search-proxy --no-pager
+        ENDSSH
+        
+        # Get final URLs
+        VM_FQDN=$(az network public-ip show --resource-group ${{ secrets.VM_RESOURCE_GROUP }} --name ${{ secrets.VM_NAME }}-ip --query dnsSettings.fqdn --output tsv)
+        echo "🎉 Deployment completed!"
+        echo "🔗 Service URLs:"
+        echo "   DB Server: http://$VM_FQDN:8001"
+        echo "   Proxy Server: http://$VM_FQDN:8002"
+        echo "   Health Check: http://$VM_FQDN/health"

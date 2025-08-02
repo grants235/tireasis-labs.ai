@@ -1,0 +1,30 @@
+[Unit]
+Description=Secure Search DB Server
+After=network.target postgresql.service
+Requires=postgresql.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/opt/secure-search/db-server
+Environment=PATH=/opt/secure-search/db-server/venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/opt/secure-search/db-server/.env
+ExecStart=/opt/secure-search/db-server/venv/bin/python -m app
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=secure-search-db
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/secure-search/db-server
+
+[Install]
+WantedBy=multi-user.target
