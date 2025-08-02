@@ -50,8 +50,11 @@ jobs:
         scp -i ~/.ssh/azure_vm_key scripts/systemd/* ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
         
         # Execute deployment on VM
-        ssh -i ~/.ssh/azure_vm_key ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP << 'ENDSSH'
+        ssh -i ~/.ssh/azure_vm_key ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP << ENDSSH
           set -e
+          export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+          export DB_SERVER_API_KEY="$DB_SERVER_API_KEY"
+          export PROXY_API_KEY="$PROXY_API_KEY"
           
           # Only install packages if first deployment
           if [ ! -d "/opt/secure-search" ]; then
