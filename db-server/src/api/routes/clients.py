@@ -83,6 +83,31 @@ async def update_client(
     return client
 
 
+@router.get("/{client_id}/stats")
+async def get_client_stats(
+    client_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(verify_api_key)
+):
+    """Get client statistics"""
+    client = db.query(Client).filter(Client.client_id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    return {
+        "client_id": str(client.client_id),
+        "client_name": client.client_name,
+        "total_embeddings": client.total_embeddings,
+        "total_searches": client.total_searches,
+        "embedding_dim": client.embedding_dim,
+        "max_embeddings_allowed": client.max_embeddings_allowed,
+        "last_active_at": client.last_active_at.isoformat() if client.last_active_at else None,
+        "is_active": client.is_active,
+        "created_at": client.created_at.isoformat(),
+        "updated_at": client.updated_at.isoformat()
+    }
+
+
 @router.delete("/{client_id}")
 async def delete_client(
     client_id: uuid.UUID,

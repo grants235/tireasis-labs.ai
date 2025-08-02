@@ -161,11 +161,15 @@ class SecureSearchService:
             # Store LSH hashes
             client_lsh_data = self.client_lsh_hashes[client_id]
             
+            logger.info(f"Adding embedding {embedding_id} with LSH hashes: {lsh_hashes}")
+            
             for table_idx, hash_value in enumerate(lsh_hashes):
                 key = (table_idx, hash_value)
                 if key not in client_lsh_data:
                     client_lsh_data[key] = set()
                 client_lsh_data[key].add(embedding_id)
+            
+            logger.info(f"Total LSH buckets after add: {len(client_lsh_data)}")
             
             add_time = (time.time() - start_time) * 1000
             
@@ -225,10 +229,17 @@ class SecureSearchService:
             # Step 1: LSH candidate selection
             lsh_start = time.time()
             
+            # Debug logging
+            stored_hashes = self.client_lsh_hashes[client_id]
+            logger.info(f"Search debug for client {client_id}:")
+            logger.info(f"  Query hashes: {lsh_hashes}")
+            logger.info(f"  Stored hash buckets: {len(stored_hashes)}")
+            logger.info(f"  Total embeddings: {total_embeddings}")
+            
             candidates = self.lsh_service.find_candidate_embeddings(
                 client_id=client_id,
                 query_hashes=lsh_hashes,
-                stored_hashes=self.client_lsh_hashes[client_id],
+                stored_hashes=stored_hashes,
                 min_matches=1  # At least 1 table match required
             )
             

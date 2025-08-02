@@ -2,6 +2,7 @@
 Locality-Sensitive Hashing (LSH) Service
 Provides efficient approximate similarity search for high-dimensional vectors
 """
+import uuid
 import numpy as np
 import pickle
 import base64
@@ -163,8 +164,8 @@ class LSHSearchService:
     def find_candidate_embeddings(self,
                                 client_id: str,
                                 query_hashes: List[int],
-                                stored_hashes: Dict[Tuple[int, int], Set[str]],
-                                min_matches: int = 1) -> Set[str]:
+                                stored_hashes: Dict[Tuple[int, int], Set[uuid.UUID]],
+                                min_matches: int = 1) -> Set[uuid.UUID]:
         """
         Find candidate embeddings using LSH hash matching
         
@@ -182,7 +183,7 @@ class LSHSearchService:
             raise ValueError(f"No LSH config found for client {client_id}")
         
         # Count matches for each embedding
-        embedding_matches: Dict[str, int] = {}
+        embedding_matches: Dict[uuid.UUID, int] = {}
         
         for table_idx, hash_value in enumerate(query_hashes):
             if table_idx >= config.num_tables:
