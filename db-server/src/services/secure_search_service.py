@@ -10,8 +10,8 @@ from typing import List, Dict, Set, Tuple, Optional, Any
 from dataclasses import dataclass
 import logging
 
-from .homomorphic_encryption import he_service, HomomorphicEncryptionService
-from .lsh_search import lsh_service, LSHSearchService, LSHConfig
+from .homomorphic_encryption import he_service as global_he_service, HomomorphicEncryptionService
+from .lsh_search import lsh_service as global_lsh_service, LSHSearchService, LSHConfig
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,8 @@ class SecureSearchService:
     def __init__(self, 
                  he_service: HomomorphicEncryptionService = None,
                  lsh_service: LSHSearchService = None):
-        self.he_service = he_service or he_service
-        self.lsh_service = lsh_service or lsh_service
+        self.he_service = he_service or global_he_service
+        self.lsh_service = lsh_service or global_lsh_service
         
         # Client data storage
         self.client_contexts: Dict[str, Any] = {}

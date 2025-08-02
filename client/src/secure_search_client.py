@@ -21,7 +21,7 @@ class SecureSearchTestClient:
     Uses mock encryption for testing (in production would use TenSEAL/SEAL)
     """
     
-    def __init__(self, server_url: str = "http://localhost:8001", api_key: str = "db_server_api_key_secure_123"):
+    def __init__(self, server_url: str = "http://secure-search-vm-1754105923.eastus.cloudapp.azure.com:8001", api_key: str = "TSJnSyPxW5OZCIoNoCZ72KONxttNfDoNS8qbZkr3Oa8="):
         self.server_url = server_url
         self.api_key = api_key
         self.client_id: Optional[uuid.UUID] = None
