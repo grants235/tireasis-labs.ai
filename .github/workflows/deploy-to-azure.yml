@@ -1,0 +1,104 @@
+name: Deploy DB Server to Azure
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'db-server/**'
+      - '.github/workflows/deploy-to-azure.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Azure Container Instances
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build and push Docker image
+      env:
+        ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd db-server
+        docker build --platform linux/amd64 -t $ACR_LOGIN_SERVER/secure-search-db-server:$IMAGE_TAG .
+        docker tag $ACR_LOGIN_SERVER/secure-search-db-server:$IMAGE_TAG $ACR_LOGIN_SERVER/secure-search-db-server:latest
+        docker push $ACR_LOGIN_SERVER/secure-search-db-server:$IMAGE_TAG
+        docker push $ACR_LOGIN_SERVER/secure-search-db-server:latest
+
+    - name: Deploy to Azure Container Instances
+      env:
+        ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        IMAGE_TAG: ${{ github.sha }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        DB_SERVER_API_KEY: ${{ secrets.DB_SERVER_API_KEY }}
+        RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      run: |
+        # Deploy PostgreSQL container
+        az container create \
+          --resource-group $RESOURCE_GROUP \
+          --name secure-search-postgres \
+          --image postgres:15-alpine \
+          --environment-variables \
+            POSTGRES_DB=secure_search_prod \
+            POSTGRES_USER=secure_user \
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
+          --cpu 1 \
+          --memory 2 \
+          --ports 5432 \
+          --ip-address Private \
+          --restart-policy Always \
+          --location eastus \
+          || echo "PostgreSQL container might already exist"
+
+        # Wait a moment for PostgreSQL to be ready
+        sleep 30
+
+        # Get PostgreSQL private IP
+        POSTGRES_IP=$(az container show --resource-group $RESOURCE_GROUP --name secure-search-postgres --query ipAddress.ip --output tsv)
+
+        # Deploy DB Server container
+        az container create \
+          --resource-group $RESOURCE_GROUP \
+          --name secure-search-db-server \
+          --image $ACR_LOGIN_SERVER/secure-search-db-server:$IMAGE_TAG \
+          --registry-login-server $ACR_LOGIN_SERVER \
+          --registry-username ${{ secrets.ACR_USERNAME }} \
+          --registry-password ${{ secrets.ACR_PASSWORD }} \
+          --environment-variables \
+            POSTGRES_DB=secure_search_prod \
+            POSTGRES_USER=secure_user \
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
+            POSTGRES_HOST=$POSTGRES_IP \
+            POSTGRES_PORT=5432 \
+            DB_SERVER_API_KEY=$DB_SERVER_API_KEY \
+            DB_SERVER_PORT=8001 \
+            ENVIRONMENT=production \
+          --cpu 2 \
+          --memory 4 \
+          --ports 8001 \
+          --ip-address Public \
+          --dns-name-label secure-search-${{ github.run_number }} \
+          --restart-policy Always \
+          --location eastus \
+          --replace
+
+        # Get the FQDN
+        FQDN=$(az container show --resource-group $RESOURCE_GROUP --name secure-search-db-server --query ipAddress.fqdn --output tsv)
+        echo "🎉 Deployment completed!"
+        echo "🔗 Service URL: http://$FQDN:8001"
+        echo "🔗 Health check: http://$FQDN:8001/health"
