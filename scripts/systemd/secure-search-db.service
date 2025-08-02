@@ -11,7 +11,7 @@ Group=azureuser
 WorkingDirectory=/opt/secure-search/db-server
 Environment=PATH=/opt/secure-search/db-server/venv/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=/opt/secure-search/db-server/.env
-ExecStart=/opt/secure-search/db-server/venv/bin/python -m app
+ExecStart=/opt/secure-search/db-server/venv/bin/python main.py
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10

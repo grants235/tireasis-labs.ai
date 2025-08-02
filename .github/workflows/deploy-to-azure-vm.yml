@@ -110,12 +110,22 @@ jobs:
           # Setup PostgreSQL
           sudo systemctl start postgresql
           sudo systemctl enable postgresql
-          sudo -u postgres psql << EOF
-            CREATE DATABASE IF NOT EXISTS secure_search_prod;
-            CREATE USER IF NOT EXISTS secure_user WITH PASSWORD '$POSTGRES_PASSWORD';
-            GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;
-            ALTER USER secure_user CREATEDB;
-          EOF
+          sudo -u postgres psql << PSQLEOF
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'secure_search_prod') THEN
+                    CREATE DATABASE secure_search_prod;
+                END IF;
+                
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'secure_user') THEN
+                    CREATE USER secure_user WITH PASSWORD '$POSTGRES_PASSWORD';
+                END IF;
+                
+                GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;
+                ALTER USER secure_user CREATEDB;
+            END
+            \$\$;
+          PSQLEOF
           
           # Create environment files
           cat > /opt/secure-search/db-server/.env << EOF
