@@ -19,12 +19,12 @@ class HomomorphicEncryptionService:
     """
     
     def __init__(self):
-        self.context_cache: Dict[str, ts.TenSEALContext] = {}
+        self.context_cache: Dict[str, Any] = {}
         
     def create_context(self, 
                       poly_modulus_degree: int = 8192,
                       coeff_mod_bit_sizes: List[int] = None,
-                      scale: float = 2**40) -> ts.TenSEALContext:
+                      scale: float = 2**40) -> Any:
         """
         Create a new TenSEAL context for CKKS scheme
         
@@ -54,26 +54,26 @@ class HomomorphicEncryptionService:
         logger.info(f"Created HE context with poly_degree={poly_modulus_degree}")
         return context
     
-    def serialize_context(self, context: ts.TenSEALContext) -> str:
+    def serialize_context(self, context: Any) -> str:
         """Serialize context to base64 string"""
         context_bytes = context.serialize()
         return base64.b64encode(context_bytes).decode('utf-8')
     
-    def deserialize_context(self, context_b64: str) -> ts.TenSEALContext:
+    def deserialize_context(self, context_b64: str) -> Any:
         """Deserialize context from base64 string"""
         context_bytes = base64.b64decode(context_b64.encode('utf-8'))
         return ts.context_from(context_bytes)
     
-    def cache_context(self, client_id: str, context: ts.TenSEALContext):
+    def cache_context(self, client_id: str, context: Any):
         """Cache context for client to avoid repeated deserialization"""
         self.context_cache[client_id] = context
         logger.info(f"Cached HE context for client {client_id}")
     
-    def get_cached_context(self, client_id: str) -> Optional[ts.TenSEALContext]:
+    def get_cached_context(self, client_id: str) -> Optional[Any]:
         """Get cached context for client"""
         return self.context_cache.get(client_id)
     
-    def encrypt_vector(self, context: ts.TenSEALContext, vector: np.ndarray) -> str:
+    def encrypt_vector(self, context: Any, vector: np.ndarray) -> str:
         """
         Encrypt a vector using CKKS scheme
         
@@ -95,7 +95,7 @@ class HomomorphicEncryptionService:
         return base64.b64encode(encrypted_bytes).decode('utf-8')
     
     def deserialize_encrypted_vector(self, 
-                                   context: ts.TenSEALContext, 
+                                   context: Any, 
                                    encrypted_vector_b64: str) -> ts.CKKSVector:
         """
         Deserialize an encrypted vector
@@ -111,7 +111,7 @@ class HomomorphicEncryptionService:
         return ts.ckks_vector_from(context, encrypted_bytes)
     
     def compute_encrypted_similarity(self, 
-                                   context: ts.TenSEALContext,
+                                   context: Any,
                                    encrypted_query: str,
                                    encrypted_vector: str) -> str:
         """
@@ -144,7 +144,7 @@ class HomomorphicEncryptionService:
             raise
     
     def batch_encrypt_vectors(self, 
-                            context: ts.TenSEALContext, 
+                            context: Any, 
                             vectors: List[np.ndarray]) -> List[str]:
         """
         Batch encrypt multiple vectors for efficiency
@@ -173,7 +173,7 @@ class HomomorphicEncryptionService:
         return encrypted_vectors
     
     def batch_compute_similarities(self,
-                                 context: ts.TenSEALContext,
+                                 context: Any,
                                  encrypted_query: str,
                                  encrypted_vectors: List[str]) -> List[str]:
         """
