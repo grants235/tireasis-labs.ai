@@ -191,13 +191,30 @@ async def search_embeddings(
         # Step 1: Find LSH candidates using database function
         lsh_start = time.time()
         
-        # Call the PostgreSQL function for efficient candidate search
+        # Use direct SQL query for LSH candidate search (fallback if function doesn't exist)
+        from sqlalchemy import text
         candidate_query = db.execute(
-            """
-            SELECT embedding_id, match_count 
-            FROM find_lsh_candidates(%s, %s, %s)
-            """,
-            (search_request.client_id, search_request.lsh_hashes, search_request.rerank_candidates)
+            text("""
+            SELECT 
+                lh.embedding_id,
+                COUNT(*) as match_count
+            FROM lsh_hashes lh
+            WHERE lh.client_id = :client_id
+              AND lh.hash_value = ANY(:lsh_hashes)
+              AND EXISTS (
+                  SELECT 1 FROM embeddings e 
+                  WHERE e.embedding_id = lh.embedding_id 
+                    AND e.is_deleted = FALSE
+              )
+            GROUP BY lh.embedding_id
+            ORDER BY match_count DESC
+            LIMIT :max_candidates
+            """),
+            {
+                "client_id": search_request.client_id,
+                "lsh_hashes": search_request.lsh_hashes,
+                "max_candidates": search_request.rerank_candidates
+            }
         )
         
         candidates = candidate_query.fetchall()
