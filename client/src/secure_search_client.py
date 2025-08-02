@@ -109,7 +109,7 @@ class SecureSearchTestClient:
             for bit_idx in range(self.lsh_config["hash_size"]):
                 # Dot product with random hyperplane
                 dot_product = np.dot(vector, self.random_planes[table_idx, bit_idx])
-                hash_bits.append(1 if dot_product > 0 else 0)
+                hash_bits.append(1 if dot_product >= 0 else 0)  # Use >= 0 to match server
             
             # Convert bits to integer hash value
             hash_value = sum(bit * (2 ** i) for i, bit in enumerate(hash_bits))
@@ -169,6 +169,14 @@ class SecureSearchTestClient:
             random_planes_data = base64.b64decode(response["random_planes"])
             self.random_planes = pickle.loads(random_planes_data)
             self.console.print("[green]✅ Using server-synchronized LSH planes[/green]")
+            
+            # Update LSH config to match server
+            lsh_config = response.get("lsh_config", {})
+            if lsh_config:
+                self.lsh_config.update(lsh_config)
+                self.console.print(f"[green]✅ Synchronized LSH config: {lsh_config}[/green]")
+        else:
+            self.console.print("[yellow]⚠️ No random planes received from server, using client defaults[/yellow]")
         
         self.console.print(f"[green]✅ Client initialized successfully![/green]")
         self.console.print(f"Client ID: {self.client_id}")
@@ -256,7 +264,7 @@ class SecureSearchTestClient:
         if not self.client_id:
             raise ValueError("Client not initialized. Call initialize() first.")
         
-        return self._make_request("GET", f"/client/{self.client_id}/stats")
+        return self._make_request("GET", f"/clients/{self.client_id}/stats")
     
     def print_search_results(self, query: str, results: Dict):
         """Pretty print search results"""
