@@ -23,18 +23,6 @@ def install_dependencies():
         return False
 
 
-def check_python_version():
-    """Check if Python version is compatible"""
-    print("🐍 Checking Python version...")
-    
-    if sys.version_info < (3, 8):
-        print(f"❌ Python 3.8+ required, found {sys.version}")
-        return False
-    
-    print(f"✅ Python {sys.version} is compatible")
-    return True
-
-
 def check_server_connection():
     """Check if server is accessible"""
     print("🔌 Checking server connection...")
@@ -71,11 +59,7 @@ def main():
     os.chdir(script_dir)
     
     success = True
-    
-    # Check Python version
-    if not check_python_version():
-        success = False
-    
+
     # Install dependencies
     if success and not install_dependencies():
         success = False
