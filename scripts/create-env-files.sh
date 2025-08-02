@@ -15,14 +15,12 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 DB_SERVER_API_KEY=PLACEHOLDER_DB_SERVER_API_KEY
 DB_SERVER_PORT=8001
-ENVIRONMENT=production
 EOF
 
 # Create proxy-server .env file
 cat > /opt/secure-search/proxy-server/.env << 'EOF'
 PROXY_API_KEY=PLACEHOLDER_PROXY_API_KEY
 PROXY_SERVER_PORT=8002
-ENVIRONMENT=production
 EOF
 
 # Replace placeholders with actual values
