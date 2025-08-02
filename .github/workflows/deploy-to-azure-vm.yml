@@ -110,22 +110,10 @@ jobs:
           # Setup PostgreSQL
           sudo systemctl start postgresql
           sudo systemctl enable postgresql
-          sudo -u postgres psql << PSQLEOF
-            DO \$\$
-            BEGIN
-                IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'secure_search_prod') THEN
-                    CREATE DATABASE secure_search_prod;
-                END IF;
-                
-                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'secure_user') THEN
-                    CREATE USER secure_user WITH PASSWORD '$POSTGRES_PASSWORD';
-                END IF;
-                
-                GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;
-                ALTER USER secure_user CREATEDB;
-            END
-            \$\$;
-          PSQLEOF
+          sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'secure_search_prod';" | grep -q 1 || sudo -u postgres createdb secure_search_prod
+          sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname = 'secure_user';" | grep -q 1 || sudo -u postgres psql -c "CREATE USER secure_user WITH PASSWORD '$POSTGRES_PASSWORD';"
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;"
+          sudo -u postgres psql -c "ALTER USER secure_user CREATEDB;"
           
           # Create environment files
           cat > /opt/secure-search/db-server/.env << EOF
@@ -158,32 +146,32 @@ jobs:
           
           # Setup nginx reverse proxy (optional)
           sudo tee /etc/nginx/sites-available/secure-search << 'NGINXEOF'
-            server {
-                listen 80;
-                server_name _;
-                
-                location /api/ {
-                    proxy_pass http://localhost:8001/;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                }
-                
-                location /proxy/ {
-                    proxy_pass http://localhost:8002/;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                }
-                
-                location /health {
-                    return 200 'OK';
-                    add_header Content-Type text/plain;
-                }
-            }
-          NGINXEOF
+server {
+    listen 80;
+    server_name _;
+    
+    location /api/ {
+        proxy_pass http://localhost:8001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    location /proxy/ {
+        proxy_pass http://localhost:8002/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    location /health {
+        return 200 'OK';
+        add_header Content-Type text/plain;
+    }
+}
+NGINXEOF
           
           sudo ln -sf /etc/nginx/sites-available/secure-search /etc/nginx/sites-enabled/
           sudo rm -f /etc/nginx/sites-enabled/default
