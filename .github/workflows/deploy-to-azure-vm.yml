@@ -46,7 +46,7 @@ jobs:
         scp -i ~/.ssh/azure_vm_key -r proxy-server ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
         
         # Copy deployment scripts
-        scp -i ~/.ssh/azure_vm_key scripts/vm-setup.sh ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
+        scp -i ~/.ssh/azure_vm_key scripts/*.sh ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
         scp -i ~/.ssh/azure_vm_key scripts/systemd/* ${{ secrets.VM_ADMIN_USERNAME }}@$VM_IP:/tmp/
         
         # Execute deployment on VM
@@ -107,31 +107,13 @@ jobs:
             echo "⚡ Skipping proxy-server packages (unchanged)"
           fi
           
-          # Setup PostgreSQL
-          sudo systemctl start postgresql
-          sudo systemctl enable postgresql
-          sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'secure_search_prod';" | grep -q 1 || sudo -u postgres createdb secure_search_prod
-          sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname = 'secure_user';" | grep -q 1 || sudo -u postgres psql -c "CREATE USER secure_user WITH PASSWORD '$POSTGRES_PASSWORD';"
-          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE secure_search_prod TO secure_user;"
-          sudo -u postgres psql -c "ALTER USER secure_user CREATEDB;"
+          # Run database setup script
+          chmod +x /tmp/setup-db.sh
+          /tmp/setup-db.sh "$POSTGRES_PASSWORD"
           
           # Create environment files
-          cat > /opt/secure-search/db-server/.env << EOF
-            POSTGRES_DB=secure_search_prod
-            POSTGRES_USER=secure_user
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            POSTGRES_HOST=localhost
-            POSTGRES_PORT=5432
-            DB_SERVER_API_KEY=$DB_SERVER_API_KEY
-            DB_SERVER_PORT=8001
-            ENVIRONMENT=production
-          EOF
-          
-          cat > /opt/secure-search/proxy-server/.env << EOF
-            PROXY_API_KEY=$PROXY_API_KEY
-            PROXY_SERVER_PORT=8002
-            ENVIRONMENT=production
-          EOF
+          chmod +x /tmp/create-env-files.sh
+          /tmp/create-env-files.sh "$POSTGRES_PASSWORD" "$DB_SERVER_API_KEY" "$PROXY_API_KEY"
           
           # Install systemd services
           sudo cp /tmp/secure-search-db.service /etc/systemd/system/
@@ -144,38 +126,9 @@ jobs:
           sudo systemctl restart secure-search-db
           sudo systemctl restart secure-search-proxy
           
-          # Setup nginx reverse proxy (optional)
-          sudo tee /etc/nginx/sites-available/secure-search << 'NGINXEOF'
-          server {
-              listen 80;
-              server_name _;
-              
-              location /api/ {
-                  proxy_pass http://localhost:8001/;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-              }
-              
-              location /proxy/ {
-                  proxy_pass http://localhost:8002/;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-              }
-              
-              location /health {
-                  return 200 'OK';
-                  add_header Content-Type text/plain;
-              }
-          }
-          NGINXEOF
-          
-          sudo ln -sf /etc/nginx/sites-available/secure-search /etc/nginx/sites-enabled/
-          sudo rm -f /etc/nginx/sites-enabled/default
-          sudo nginx -t && sudo systemctl reload nginx
+          # Setup nginx reverse proxy
+          chmod +x /tmp/setup-nginx.sh
+          sudo /tmp/setup-nginx.sh
           
           echo "🎉 Deployment completed!"
           echo "📊 Service status:"
