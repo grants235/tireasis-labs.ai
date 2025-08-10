@@ -228,8 +228,8 @@ class SecureSearchTestClient:
         for idx, hv in enumerate(hashes):
             msg = f"{idx}:{hv}".encode()
             mac = hmac.new(self._lsh_key, msg, digestmod=pyhash.sha256).digest()
-            # Truncate to 8 bytes -> 64-bit integer for storage efficiency
-            masked_int = int.from_bytes(mac[:8], byteorder='big', signed=False)
+            # Truncate to 4 bytes and clamp to 31 bits to fit PostgreSQL INTEGER
+            masked_int = int.from_bytes(mac[:4], byteorder='big', signed=False) & 0x7fffffff
             masked.append(masked_int)
         return masked
     

@@ -25,7 +25,7 @@ python test_secure_search.py
 
 ```bash
 # Against Azure (example)
-SECURE_SEARCH_SERVER_URL="http://secure-search-<host>.eastus.cloudapp.azure.com:8001" \
+SECURE_SEARCH_SERVER_URL="http://secure-search-vm-1754105923.eastus.cloudapp.azure.com:8001" \
 SECURE_SEARCH_STRIP_PLAINTEXT_METADATA=1 \
 ./venv/bin/python3 -m pytest -q
 ```
