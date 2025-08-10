@@ -1,98 +1,57 @@
 # Secure Search Test Client
 
-This test client demonstrates the complete secure similarity search workflow using mock encryption to verify that the database server is working correctly.
+This client drives an end-to-end, privacy-preserving similarity search workflow and includes a robust pytest suite that scales to thousands of screenshot-like sentences, verifies privacy guarantees, and checks efficiency and result quality.
 
-## Features
+## Highlights
+- **Mock HE** client for testing alignment (encrypted vectors and scores)
+- **Real LSH** hashing for candidate selection
+- **Strong tests** for privacy (no plaintext leakage with a strip flag), throughput, and relevance
+- **Screenshot corpus** generators to stress-test at scale (thousands)
 
-- **Mock Homomorphic Encryption**: Simulates encrypted embeddings for testing
-- **LSH Hash Computation**: Real locality-sensitive hashing for similarity search
-- **Comprehensive Testing**: Full workflow from initialization to search results
-- **Rich UI**: Beautiful terminal output with progress bars and tables
-
-## Quick Start
-
-### 1. Install Dependencies
+## Setup
 
 ```bash
-# From the client directory
-pip install -r requirements.txt
+# From app/client
+./venv/bin/python3 -m pip install -r requirements.txt
 ```
 
-### 2. Start Database Server
-
-Make sure the Docker containers are running:
-
-```bash
-# From the app directory
-docker-compose up -d
-```
-
-### 3. Run Test Script
+## Running the demo script (optional)
 
 ```bash
 python test_secure_search.py
 ```
 
-## What the Test Does
+## Running the pytest suite
 
-1. **🔌 Server Connection**: Verifies the database server is healthy
-2. **🚀 Client Initialization**: Establishes HE context with server
-3. **📤 Embedding Upload**: Encrypts and uploads 25 test sentences 
-4. **🔍 Similarity Search**: Performs 6 different search queries
-5. **📊 Statistics Check**: Verifies client stats and usage metrics
-
-## Test Data
-
-The test uses 25 carefully crafted sentences across 5 categories:
-- **Technology**: AI, machine learning, cryptography
-- **Science**: Neuroscience, genetics, physics  
-- **Business**: Entrepreneurship, marketing, finance
-- **Health**: Wellness, mental health, telemedicine
-- **Education**: E-learning, STEM, pedagogy
-
-## Expected Output
-
-```
-🔐 SECURE SIMILARITY SEARCH - COMPREHENSIVE TEST
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  🔐 SECURE SIMILARITY SEARCH - COMPREHENSIVE TEST           ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-✅ Server is healthy and responding
-✅ Client initialization successful
-✅ Upload complete: 25 successful, 0 failed
-✅ Search completed in 45.2ms
-✅ Statistics retrieved successfully
-
-🎉 ALL TESTS PASSED - Secure Search System Working Correctly! 🎉
+```bash
+# Against Azure (example)
+SECURE_SEARCH_SERVER_URL="http://secure-search-<host>.eastus.cloudapp.azure.com:8001" \
+SECURE_SEARCH_STRIP_PLAINTEXT_METADATA=1 \
+./venv/bin/python3 -m pytest -q
 ```
 
-## Architecture
+Environment variables:
+- `SECURE_SEARCH_SERVER_URL`: target DB server URL
+- `DB_SERVER_API_KEY` (or `SECURE_SEARCH_API_KEY`): API key
+- `SECURE_SEARCH_STRIP_PLAINTEXT_METADATA=1`: do not send raw text in metadata
+- `SECURE_SEARCH_THOUSANDS`: size for large corpus tests (default 2000)
 
-The test client simulates a real secure search client by:
+## What the tests cover
+- Alignment with the architectural notes (init, LSH sync, encrypted-only similarities)
+- Candidate efficiency: ensures we don’t send back thousands of items
+- Result payload and `top_k` bounds
+- Multi-client isolation and basic performance budgets
+- Thousands-scale screenshot-like corpora with near-duplicates and noise
+- Explicit privacy property: when the strip flag is set, no plaintext `text` is sent in metadata
 
-- **Generating mock encrypted vectors** using deterministic hashing
-- **Computing real LSH hashes** for similarity search
-- **Simulating decryption** of encrypted similarity scores
-- **Testing all API endpoints** comprehensively
+## Client internals
+- `src/secure_search_client.py` implements:
+  - `initialize()`: sync HE/LSH with the server
+  - `add_embedding(text, ...)`: converts text to a deterministic vector, encrypts, computes LSH, and uploads
+  - `search(query, ...)`: encrypts query, asks server to filter via LSH and compute encrypted similarity, then simulates decryption for ranking
+  - When `SECURE_SEARCH_STRIP_PLAINTEXT_METADATA=1`, it omits raw `text` from uploaded metadata
 
 ## Troubleshooting
-
-### "Cannot connect to server"
-- Ensure Docker containers are running: `docker-compose up -d`
-- Check server health: `curl http://localhost:8001/health`
-
-### "Import errors"
-- Install dependencies: `pip install -r requirements.txt`
-- Check Python version: Python 3.8+ required
-
-### "No results found"
-- This is normal for unrelated queries
-- Check that embeddings were uploaded successfully
-
-## Files
-
-- `test_secure_search.py` - Main test script
-- `src/secure_search_client.py` - Client implementation  
-- `data/test_sentences.json` - Test dataset
-- `requirements.txt` - Python dependencies
+- Verify the server is reachable: `curl http://<host>:8001/health`
+- Ensure `DB_SERVER_API_KEY` matches the server’s configuration
+- Increase `SECURE_SEARCH_THOUSANDS` gradually if running on constrained hardware

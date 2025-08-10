@@ -73,7 +73,7 @@ async def initialize_client(
             num_tables=request.lsh_config["num_tables"],
             hash_size=request.lsh_config["hash_size"],
             num_candidates=request.lsh_config["num_candidates"],
-            random_planes=base64.b64decode(response_data["random_planes"])
+            random_planes=None  # Do not persist planes; client retains them
         )
         db.add(db_lsh_config)
         

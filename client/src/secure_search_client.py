@@ -7,12 +7,15 @@ import base64
 import hashlib
 import time
 import json
+import os
 from typing import List, Dict, Optional, Tuple, Any
 import numpy as np
 import requests
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, TaskID
+import hmac
+import hashlib as pyhash
 
 
 class SecureSearchTestClient:
@@ -27,6 +30,15 @@ class SecureSearchTestClient:
         self.client_id: Optional[uuid.UUID] = None
         self.embedding_dim = 384
         self.console = Console()
+        
+        # Privacy behavior controls via environment variables
+        # When enabled, avoid sending raw plaintext fields in metadata (e.g., full text)
+        self.strip_plaintext_metadata = os.getenv("SECURE_SEARCH_STRIP_PLAINTEXT_METADATA", "0") not in ("", "0", "false", "False")
+        
+        # Optional client-side secret for keyed hashing of LSH bits
+        # If not provided, derive one at initialization time
+        self._lsh_key: Optional[bytes] = None
+        self._lsh_key_override = os.getenv("SECURE_SEARCH_LSH_KEY", "")
         
         # LSH parameters (must match server configuration)
         self.lsh_config = {
@@ -192,6 +204,14 @@ class SecureSearchTestClient:
         else:
             self.console.print("[yellow]⚠️ No random planes received from server, using client defaults[/yellow]")
         
+        # Initialize/derive a client-side secret for keyed hashing
+        if self._lsh_key_override:
+            self._lsh_key = self._lsh_key_override.encode()
+        else:
+            # Derive from client_id and api_key to be stable per client
+            material = f"{self.client_id}:{self.api_key}".encode()
+            self._lsh_key = pyhash.sha256(material).digest()
+        
         self.console.print(f"[green]✅ Client initialized successfully![/green]")
         self.console.print(f"Client ID: {self.client_id}")
         self.console.print(f"Server ID: {response['server_id']}")
@@ -199,6 +219,19 @@ class SecureSearchTestClient:
         self.console.print(f"Supported Operations: {', '.join(response['supported_operations'])}")
         
         return response
+    
+    def _mask_lsh_hashes(self, hashes: List[int]) -> List[int]:
+        """HMAC-mask per-table hashes to hide raw sign bits while preserving equality."""
+        if not self._lsh_key:
+            raise ValueError("LSH key not initialized")
+        masked: List[int] = []
+        for idx, hv in enumerate(hashes):
+            msg = f"{idx}:{hv}".encode()
+            mac = hmac.new(self._lsh_key, msg, digestmod=pyhash.sha256).digest()
+            # Truncate to 8 bytes -> 64-bit integer for storage efficiency
+            masked_int = int.from_bytes(mac[:8], byteorder='big', signed=False)
+            masked.append(masked_int)
+        return masked
     
     def add_embedding(self, text: str, embedding_id: Optional[str] = None, 
                      metadata: Optional[Dict] = None) -> Dict:
@@ -210,14 +243,19 @@ class SecureSearchTestClient:
         vector = self._text_to_vector(text)
         encrypted_vector = self._simulate_encrypt_vector(vector)
         
-        # Compute LSH hashes
-        lsh_hashes = self._compute_lsh_hashes(vector)
+        # Compute LSH hashes and mask them with client key
+        raw_hashes = self._compute_lsh_hashes(vector)
+        lsh_hashes = self._mask_lsh_hashes(raw_hashes)
         
         # Prepare metadata
         if metadata is None:
             metadata = {}
+        # Only include non-sensitive summary fields when privacy strip is enabled
+        if not self.strip_plaintext_metadata:
+            metadata.update({
+                "text": text,
+            })
         metadata.update({
-            "text": text,
             "text_length": len(text),
             "word_count": len(text.split()),
             "added_at": time.time()
@@ -243,8 +281,9 @@ class SecureSearchTestClient:
         query_vector = self._text_to_vector(query_text)
         encrypted_query = self._simulate_encrypt_vector(query_vector)
         
-        # Compute LSH hashes for query
-        lsh_hashes = self._compute_lsh_hashes(query_vector)
+        # Compute LSH hashes for query and mask them
+        raw_hashes = self._compute_lsh_hashes(query_vector)
+        lsh_hashes = self._mask_lsh_hashes(raw_hashes)
         
         search_request = {
             "client_id": str(self.client_id),

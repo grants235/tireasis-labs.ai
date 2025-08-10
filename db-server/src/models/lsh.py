@@ -20,8 +20,8 @@ class LSHConfig(Base):
     hash_size = Column(Integer, nullable=False, default=16)
     num_candidates = Column(Integer, nullable=False, default=100)
     
-    # Random planes for LSH (stored as serialized numpy array)
-    random_planes = Column(BYTEA, nullable=False)
+    # Random planes for LSH (no longer persisted; keep nullable for compatibility)
+    random_planes = Column(BYTEA, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
